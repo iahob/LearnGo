@@ -26,14 +26,33 @@ func readMaze(filename string) [][]int {
 }
 
 type point struct {
-	i, j int
+	i, j      int
+	direction int // 0 上 1 左 2 下 3 右
 }
 
 var dirs = [4]point{
-	{-1, 0}, {0, -1}, {1, 0}, {0, 1}}
+	{i: -1, j: 0}, {i: 0, j: -1}, {i: 1, j: 0}, {i: 0, j: 1}}
 
 func (p point) add(r point) point {
-	return point{p.i + r.i, p.j + r.j}
+	return point{i: p.i + r.i, j: p.j + r.j}
+}
+func (p point) next(maze [][]int, steps [][]int) (point, bool) {
+
+	for p.direction < 4 {
+		np := p.add(dirs[p.direction])
+		p.direction++
+		val, ok := np.at(maze)
+		if !ok || val == 1 {
+			continue
+		}
+		val, ok = np.at(steps)
+		if !ok || val != 0 {
+			continue
+		}
+		return np, true
+	}
+
+	return point{}, false
 }
 
 func (p point) at(grid [][]int) (int, bool) {
@@ -48,7 +67,7 @@ func (p point) at(grid [][]int) (int, bool) {
 	return grid[p.i][p.j], true
 }
 
-func walk(maze [][]int,
+func bfswalk(maze [][]int,
 	start, end point) [][]int {
 	steps := make([][]int, len(maze))
 	for i := range steps {
@@ -92,19 +111,51 @@ func walk(maze [][]int,
 
 	return steps
 }
+func dfswalk(maze [][]int, start, end point) [][]int {
+	steps := make([][]int, len(maze))
+	for i := range steps {
+		steps[i] = make([]int, len(maze[i]))
+	}
+	Q := []point{start}
+	for len(Q) > 0 {
+		cur := Q[len(Q)-1]
+		next, b := cur.next(maze, steps)
+		if b == false {
+			Q = Q[0 : len(Q)-1]
+			continue
+		}
+		curSteps, _ := next.at(steps)
+
+		steps[next.i][next.j] = curSteps + 1
+
+		Q = append(Q, next)
+		if next == end {
+			break
+		}
+
+	}
+	return steps
+}
 
 func main() {
 	maze := readMaze("maze/maze.in")
 
-	steps := walk(maze, point{0, 0},
-		point{len(maze) - 1, len(maze[0]) - 1})
+	bfssteps := bfswalk(maze, point{i: 0, j: 0},
+		point{i: len(maze) - 1, j: len(maze[0]) - 1})
 
-	for _, row := range steps {
+	for _, row := range bfssteps {
 		for _, val := range row {
-			fmt.Printf("%3d", val)
+			fmt.Printf("%0 3d", val)
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+	dfssteps := dfswalk(maze, point{i: 0, j: 0}, point{i: len(maze) - 1, j: len(maze[0]) - 1})
+	for _, row := range dfssteps {
+		for _, val := range row {
+			fmt.Printf("%0 3d", val)
 		}
 		fmt.Println()
 	}
 
-	// TODO: construct path from steps
 }
